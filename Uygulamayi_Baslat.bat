@@ -1,10 +1,18 @@
 @echo off
 cd /d "%~dp0"
 
-call conda activate jira_mcp
+if not exist ".venv\Scripts\activate.bat" (
+    echo.
+    echo [HATA] ".venv" sanal ortami bulunamadi veya aktive edilemedi.
+    echo Once Kurulum.bat dosyasini calistirin.
+    echo.
+    pause
+    exit /b 1
+)
+call .venv\Scripts\activate.bat
 if errorlevel 1 (
     echo.
-    echo [HATA] "jira_mcp" adinda bir conda ortami bulunamadi veya aktive edilemedi.
+    echo [HATA] ".venv" sanal ortami bulunamadi veya aktive edilemedi.
     echo Once Kurulum.bat dosyasini calistirin.
     echo.
     pause

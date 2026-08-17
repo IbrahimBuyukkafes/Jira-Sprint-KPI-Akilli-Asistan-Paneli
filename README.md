@@ -101,12 +101,12 @@ JIRA_MCP/
 
 ## Kurulum
 
-Ortam conda ile yönetilir:
+Ortam Python'un kendi `venv` modülü ile yönetilir:
 
 ```bash
-# 1) Conda ortamını oluşturun ve aktifleştirin
-conda create -n jira_mcp python=3.10
-conda activate jira_mcp
+# 1) Sanal ortamı oluşturun ve aktifleştirin
+python -m venv .venv
+.venv\Scripts\activate
 
 # 2) Bağımlılıkları kurun
 pip install -r requirements.txt
@@ -124,7 +124,7 @@ Gerekli Python sürümü: **3.10+**. Ana bağımlılıklar: `pandas`, `lxml`, `o
 ### 1) Streamlit web arayüzü
 
 ```bash
-conda activate jira_mcp
+.venv\Scripts\activate
 streamlit run app/new_dashboard.py
 ```
 
@@ -213,8 +213,8 @@ benzerini ekleyin:
 
 (`/mutlak/yol/JIRA_MCP/src/mcp_server.py` kısmını kendi ortamınızdaki gerçek
 mutlak yolla değiştirin, örn. Windows'ta `C:/.../JIRA_MCP/src/mcp_server.py`.
-`command` alanına, `jira_mcp` conda ortamındaki `python` yorumlayıcısının tam
-yolunu vermeniz gerekebilir, örn. `C:/Users/.../anaconda3/envs/jira_mcp/python.exe`.)
+`command` alanına, `.venv` sanal ortamındaki `python` yorumlayıcısının tam
+yolunu vermeniz gerekebilir, örn. `C:/.../JIRA_MCP/.venv/Scripts/python.exe`.)
 
 ### 3) Akıllı Asistan için Ollama kurulumu
 

@@ -1,0 +1,12 @@
+[server]
+# Maksimum dosya yukleme boyutu (MB). st.file_uploader ile yuklenen Jira
+# raporlari icin bir ust sinir - gerekirse veri boyutuna gore artirilabilir.
+maxUploadSize = 50
+
+[theme]
+base = "light"
+primaryColor = "#002395"
+backgroundColor = "#FFFDF6"
+secondaryBackgroundColor = "#ECF1FB"
+textColor = "#1A1D29"
+font = "sans serif"

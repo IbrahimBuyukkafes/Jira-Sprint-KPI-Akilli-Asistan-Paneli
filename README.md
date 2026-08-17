@@ -1,0 +1,261 @@
+# Jira Sprint & KPI Akıllı Asistan Paneli
+
+## ⚡ Hızlı Başlangıç
+
+1. Bu repoyu klonlayın/indirin.
+2. `Kurulum.bat` dosyasına çift tıklayın (yalnızca ilk seferde gerekir).
+3. Sonraki her açılışta `Uygulamayi_Baslat.bat` dosyasına çift tıklayın - uygulama tarayıcınızda otomatik açılır.
+
+Jira'dan dışa aktarılan bir sprint/iterasyon raporunu (HTML, CSV veya XLSX) okuyup; KPI hesaplama,
+aylık trend analizi, kişi/proje/konu bazlı performans, statü dağılımı, klasik ve
+ileri düzey darboğaz tespiti, tahmin sapma analizi, 5 boyutlu profesyonel KPI
+paketi ve doğal dilde soru-cevap gibi geniş bir analiz yelpazesini otomatik
+üreten uçtan uca bir "sprint zekâsı" sistemi. Sonuçlar; biçimlendirilmiş/grafikli
+bir **Excel raporuna**, durum rozetli/koyu-açık tema uyumlu bir **Streamlit web
+arayüzüne** (yerel bir dil modeline - Ollama - bağlı, `mcp_server.py`'nin 13
+aracını çağıran gerçek bir sohbet asistanı dahil) ve bir LLM'in (Claude Desktop
+vb.) doğal dille sorgulayabileceği **13 MCP (Model Context Protocol) aracına**
+dönüştürülür.
+
+> 🔒 **Gizlilik notu:** Akıllı Asistan sayfası **tamamen yerel** çalışır
+> (Ollama, varsayılan model: `qwen2.5:3b`). Sorduğunuz sorular ve ilgili Jira/
+> personel verisi (isimler, iş yükü, performans metrikleri dahil) bu
+> bilgisayarın dışına ASLA çıkmaz, hiçbir buluta/üçüncü taraf API'sine
+> gönderilmez - internet bağlantısı olmadan da çalışır.
+
+## İçindekiler
+
+- [Özellikler](#özellikler)
+- [Mimari](#mimari)
+- [Proje yapısı](#proje-yapısı)
+- [Kurulum](#kurulum)
+- [Kullanım](#kullanım)
+  - [Streamlit web arayüzü](#1-streamlit-web-arayüzü)
+  - [Jira'ya Canlı Bağlanma](#jiraya-canlı-bağlanma)
+  - [MCP sunucusu (Claude Desktop vb.)](#2-mcp-sunucusu-claude-desktop-vb)
+  - [Akıllı Asistan için Ollama kurulumu](#3-akıllı-asistan-için-ollama-kurulumu)
+- [Girdi veri formatı](#girdi-veri-formatı)
+
+## Özellikler
+
+- **Temel Sprint KPI'ları** - Taahhüt edilen / gerçekleşen / plan dışı SP,
+  tamamlanma oranı, plan dışı oranı.
+- **Aylık trend karşılaştırması** - `created` tarihine göre ay ay KPI kıyaslaması.
+- **5 Temel KPI paketi** - Velocity & Predictability, Scope Stability, Workload
+  Equity/Consistency, Flow Efficiency & Bottlenecks, Estimation Accuracy &
+  Variance; takım/kişi/proje bazında.
+- **Kişi ve proje/konu bazlı analizler** - İş yükü dağılımı, kişi drill-down,
+  Component/Epic/Summary'den türetilen proje/konu grupları.
+- **Klasik + ileri düzey darboğaz analitiği** - Blocked/hold tespiti, WIP Aging,
+  Blocker & Hold maliyeti, Assignee Bouncing (proxy), Reopen Oranı (proxy), Flow
+  Load vs. Capacity.
+- **Tahmin doğruluk analizi** - Talep tipine göre hedeflenen/gerçekleşen SP sapması.
+- **Doğal dilde serbest arama** - Çok kelimeli, AND mantıklı metin araması.
+- **Biçimlendirilmiş Excel raporu** - Tek sayfada gömülü bar chart + planlanan/plan
+  dışı iş listeleri.
+- **Streamlit web arayüzü** - Kenar çubuğu/sayfa tabanlı gezinme, esik-bazlı durum
+  rozetleri (İyi/Dikkat/Kritik), koyu/açık temaya otomatik uyum ve **tamamen
+  yerel (Ollama) çalışan, gerçek araç-çağırma (tool-calling) ile çalışan bir
+  sohbet asistanı** (🔒 veriler bu bilgisayarın dışına çıkmaz - bkz. yukarıdaki
+  gizlilik notu).
+- **13 MCP aracı** - Claude Desktop gibi bir MCP istemcisinden doğal dille
+  sorgulanabilir (bkz. [MCP sunucusu](#2-mcp-sunucusu-claude-desktop-vb)).
+
+## Mimari
+
+```
+Jira raporu (HTML / CSV / XLSX)
+      │
+      ▼
+processor.py   (okuma / temizleme / tüm KPI ve analiz hesaplamaları - saf, yan etkisiz motor)
+      │
+      ├──▶ reporter.py            (tek sayfalık, grafikli Excel raporu)
+      │
+      ├──▶ mcp_server.py          (13 MCP aracı ile LLM'e doğal dilde açılır)
+      │
+      └──▶ app/new_dashboard.py   (Streamlit web arayüzü)
+                 │
+                 └──▶ llm_assistant.py  (Ollama tabanlı, tamamen yerel sohbet asistanı -
+                                          mcp_server.py'nin 13 aracını çağırır)
+```
+
+`processor.py`, hiçbir yan etkisi olmayan (diske yazmayan, sadece okuyan) saf
+fonksiyonlardan oluşan tek bir "motor" katmanıdır; Streamlit arayüzü ve MCP
+sunucusu aynı bu katmanı doğrudan kullanır - iş mantığı tek bir yerde (single
+source of truth) tanımlıdır.
+
+## Proje yapısı
+
+```
+JIRA_MCP/
+├── app/
+│   └── new_dashboard.py         Streamlit web arayüzü (sayfa tabanlı + yerel Ollama asistanı)
+├── src/
+│   ├── processor.py             Veri işleme ve analiz motoru (ana katman)
+│   ├── reporter.py               Excel rapor üretici
+│   ├── mcp_server.py             MCP sunucusu / 13 araç tanımı
+│   └── llm_assistant.py          Ollama (yerel) tabanlı, tool-calling ile çalışan sohbet motoru
+├── requirements.txt
+└── pyproject.toml
+```
+
+## Kurulum
+
+Ortam conda ile yönetilir:
+
+```bash
+# 1) Conda ortamını oluşturun ve aktifleştirin
+conda create -n jira_mcp python=3.10
+conda activate jira_mcp
+
+# 2) Bağımlılıkları kurun
+pip install -r requirements.txt
+
+# 3) Akıllı Asistan için Ollama'yı kurun ve modeli çekin
+#    https://ollama.com/download adresinden Ollama'yı kurun, sonra:
+ollama pull qwen2.5:3b
+```
+
+Gerekli Python sürümü: **3.10+**. Ana bağımlılıklar: `pandas`, `lxml`, `openpyxl`,
+`mcp`, `streamlit`, `plotly` ve `ollama` (Akıllı Asistan için, bkz. aşağıda).
+
+## Kullanım
+
+### 1) Streamlit web arayüzü
+
+```bash
+conda activate jira_mcp
+streamlit run app/new_dashboard.py
+```
+
+Açılan sayfada soldaki menüden kendi Jira raporunuzu (HTML, CSV veya XLSX) yükleyin; Ay/Kişi/Proje
+filtreleriyle tüm pano anında güncellenir. Kenar çubuğundaki sayfa seçiciyle
+şu 6 sayfa arasında gezinilir: Genel Bakış, Ekip & Kişiler, Proje & Konu, Akış &
+Darboğazlar, Akıllı Asistan (Ollama tabanlı, tamamen yerel sohbet - 🔒 bkz.
+yukarıdaki gizlilik notu) ve Rapor Merkezi (Excel indirme). Veri kaynağı olarak
+dosya yüklemenin yanı sıra, Jira'ya doğrudan canlı da bağlanabilirsiniz (bkz.
+aşağıdaki "Jira'ya Canlı Bağlanma").
+
+### Jira'ya Canlı Bağlanma
+
+Dosya yüklemek yerine, Jira Data Center'a doğrudan bağlanıp veriyi canlı da
+çekebilirsiniz - kenar çubuğundaki "Veri Kaynağı" seçicisinden "🔗 Jira'ya Canlı
+Bağlan"ı seçin. Akış iki aşamalıdır:
+
+**1) Bağlan ve Keşfet**
+
+- **Jira URL**: Kurumunuzun Jira adresi (varsayılan `https://jira.turkcell.com.tr`).
+- **Personal Access Token (PAT)**: Jira'da sağ üstteki profil resminize tıklayıp
+  **Profile → Personal Access Tokens → Create token** yolunu izleyerek
+  oluşturabilirsiniz (kullanıcı adı/şifre gerekmez, sadece bu token yeterlidir).
+- **Proje Anahtarı (Project Key)**: Jira'daki bir kartın anahtarının (örn.
+  `MS-123`) tire öncesindeki kısmı (`MS`) - proje listesinde veya adres
+  çubuğunda da görünür.
+- **Kaç ay geriye gidilsin**: Varsayılan 6 - `created` tarihine göre o kadar
+  aylık kartlar çekilir.
+- **SSL doğrulamayı atla**: Yalnızca kurumsal ağınızda güvenli olduğunu
+  biliyorsanız işaretleyin; ilk deneme her zaman güvenli (sertifika
+  doğrulamalı) yapılır, sadece SSL hatası alınırsa VE bu kutu işaretliyse
+  otomatik olarak sertifikasız tekrar denenir.
+
+"Bağlan ve Keşfet"e bastığınızda, Story Points/Developer/Analyst alanları için
+otomatik bir eşleşme önerilir ve küçük bir örnek kart tablosu gösterilir -
+eşleşme yanlışsa/otomatik bulunamadıysa açılır listelerden elle
+düzeltebilir, önizlemeden doğru veri geldiğini gözle doğrulayabilirsiniz.
+
+**2) Onayla ve Tam Veriyi Çek**
+
+Eşleştirmeyi onayladıktan sonra bu butona basınca, seçilen tarih aralığındaki
+TÜM kartlar çekilir; panelin geri kalanı (Excel raporu, Akıllı Asistan dahil)
+sanki bir dosya yüklenmiş gibi hiçbir farkla karşılaşmadan çalışmaya devam eder.
+
+> 🔒 Personal Access Token'ınız diske yazılmaz veya loglanmaz, sadece o oturum
+> boyunca bellekte tutulur. Bir bağlantı hatası (geçersiz token, yetki, hatalı
+> proje anahtarı, ağ/SSL sorunu) durumunda açık ve spesifik bir hata mesajı
+> gösterilir, uygulama durmaz - "Veri Kaynağı" seçicisinden anında "📁 Dosya
+> Yükle"ye geri dönüp mevcut akışı kullanabilirsiniz.
+
+### 2) MCP sunucusu (Claude Desktop vb.)
+
+`src/mcp_server.py`, bir MCP istemcisinin `stdio` üzerinden bağlanabileceği
+13 araç sunar - tümü `file_path` parametresi alır (kendi Jira raporunuzun -
+HTML/CSV/XLSX - yolu); göreli yollar proje köküne göre otomatik çözümlenir.
+
+| Araç | Ne yapar |
+|---|---|
+| `analyze_sprint` | Bir ayın KPI özetini + örnek iş listelerini döner |
+| `create_sprint_excel` | Biçimlendirilmiş, grafikli Excel raporu üretir |
+| `get_assignee_performance` | Kişi bazlı iş yükü/performans tablosu |
+| `get_status_breakdown` | Statü bazlı iş/SP dağılımı |
+| `get_sprint_trends` | Aylar arası KPI karşılaştırması |
+| `search_issues_by_query` | Doğal dilde çok kelimeli serbest arama |
+| `get_bottlenecks_report` | Klasik tıkanıklık/darboğaz tespiti |
+| `get_estimation_accuracy_report` | Talep tipi bazlı tahmin sapma analizi |
+| `get_core_5_kpis_report` | 5 boyutlu profesyonel KPI paketi (kişi/proje bazına inilebilir) |
+| `get_project_subject_analysis` | Proje/konu bazlı kaynak tüketimi analizi |
+| `get_assignee_details_tool` | Bir kişinin tüm görevlerine drill-down erişim |
+| `query_sprint_data_natural` | Serbest, tek cümlelik doğal dil soru-cevap |
+| `get_advanced_bottlenecks_report` | WIP Aging, Blocker & Hold, Bouncing, Reopen, Flow Load |
+
+Claude Desktop'a bağlamak için `claude_desktop_config.json` dosyanıza şunun
+benzerini ekleyin:
+
+```json
+{
+  "mcpServers": {
+    "jira-sprint-analyzer": {
+      "command": "python",
+      "args": ["/mutlak/yol/JIRA_MCP/src/mcp_server.py"]
+    }
+  }
+}
+```
+
+(`/mutlak/yol/JIRA_MCP/src/mcp_server.py` kısmını kendi ortamınızdaki gerçek
+mutlak yolla değiştirin, örn. Windows'ta `C:/.../JIRA_MCP/src/mcp_server.py`.
+`command` alanına, `jira_mcp` conda ortamındaki `python` yorumlayıcısının tam
+yolunu vermeniz gerekebilir, örn. `C:/Users/.../anaconda3/envs/jira_mcp/python.exe`.)
+
+### 3) Akıllı Asistan için Ollama kurulumu
+
+`app/new_dashboard.py`'deki "💬 Akıllı Asistan" sayfası, [Ollama](https://ollama.com)
+üzerinden **tamamen yerel** çalışan bir dil modeliyle (varsayılan model:
+`qwen2.5:3b`) çalışır. Asistan, sorularınızı yanıtlarken `mcp_server.py`'nin 13
+gerçek MCP aracını çağırır - sayılar asla tahmin edilmez, her zaman gerçek
+hesaplanmış veriden gelir.
+
+> 🔒 **Bu tamamen yerel bir kurulumdur, internet/bulut gerektirmez.** Sorularınız
+> ve ilgili Jira/personel verisi (isimler, iş yükü, performans metrikleri
+> dahil) bu bilgisayarın dışına ASLA çıkmaz - Ollama, kendi makinenizde
+> (varsayılan `localhost:11434`) çalışan bir servistir. Ollama'ya erişilemezse
+> veya model çekilmemişse, asistan başka bir buluta SESSİZCE düşmez; açık bir
+> hata gösterir (bkz. `AssistantUnavailableError`) - bu, veri sızıntısını
+> önlemek için kasıtlı bir tasarım kararıdır.
+
+Kurulum:
+
+1. [ollama.com/download](https://ollama.com/download) adresinden Ollama'yı
+   indirip kurun ve çalıştırın.
+2. Varsayılan modeli çekin:
+   ```
+   ollama pull qwen2.5:3b
+   ```
+
+Farklı bir model kullanmak isterseniz (`ollama pull <model-adı>` ile çektikten
+sonra) `src/llm_assistant.py` içindeki `DEFAULT_MODEL` sabitini güncelleyin.
+Farklı modellerin araç-seçme doğruluğunu/hızını karşılaştırmak için
+`scripts/test_ollama_tool_calling.py` bağımsız test scriptini kullanabilirsiniz.
+
+## Girdi veri formatı
+
+Sistem, Jira'nın **HTML** (`.html`/`.htm`), **CSV** (`.csv`) veya **Excel**
+(`.xlsx`) dışa aktarım (export) dosyalarından herhangi birini kabul eder -
+dosya uzantısına göre otomatik olarak doğru okuyucu seçilir. CSV/XLSX
+dosyalarında birden fazla sayfa/tablo varsa, Jira'ya özgü başlıklara en çok
+benzeyen tablo otomatik seçilir (HTML'de birden fazla tablo olması durumuyla
+aynı mantık). Kolon başlıkları Türkçe/İngilizce varyasyonlarıyla otomatik
+eşlenir (`Sorumlu`/`Assignee`, `Story Points`/`Estimate`/`Custom field (Story
+Points)`, `Oluşturulma Tarihi`/`Created`, `Project`/`Project name` vb.);
+zorunlu alanlar `issue_type`, `summary` ve `status`'tür. Plan dışı işler,
+`labels` alanında "SprintDışı" (yazım varyasyonlarından bağımsız) geçen
+kartlar olarak tespit edilir.

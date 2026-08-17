@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Sanal ortam
+.venv/
+venv/
+env/
+
+# Ortam degiskenleri / gizli anahtarlar
+.env
+.streamlit/secrets.toml
+
+# Hassas veri - gercek Jira/personel verisi (isimler, iş yuku, performans
+# metrikleri) icerir, versiyon kontrolune girmemeli
+data/
+
+# Test scriptlerinin urettigi cikti (kaynak degil, yeniden uretilebilir)
+outputs/
+
+# JIRA-MCP.bat'in sessiz modunun yazdigi calisma zamani log dosyalari
+logs/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code / test cache - proje kaynagi degil, yerel arac durumu
+.claude/
+.pytest_cache/
